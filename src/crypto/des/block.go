@@ -15,7 +15,7 @@ func cryptBlock(subkeys []uint64, dst, src []byte, decrypt bool) {
 	b = permuteInitialBlock(b)
 	left, right := uint32(b>>32), uint32(b)
 
-	left = (left << 31) | (left >> 1)
+	left = (left << 1) | (left >> 31)
 	right = (right << 1) | (right >> 31)
 
 	if decrypt {
@@ -28,7 +28,7 @@ func cryptBlock(subkeys []uint64, dst, src []byte, decrypt bool) {
 		}
 	}
 
-	left = (left << 1) | (left >> 31)
+	left = (left << 31) | (left >> 1)
 	right = (right << 31) | (right >> 1)
 
 	// switch left & right and perform final permutation
