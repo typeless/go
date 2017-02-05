@@ -4,12 +4,19 @@
 
 package des
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"fmt"
+	"os"
+)
 
 func cryptBlock(subkeys []uint64, dst, src []byte, decrypt bool) {
 	b := binary.BigEndian.Uint64(src)
 	b = permuteInitialBlock(b)
 	left, right := uint32(b>>32), uint32(b)
+
+	left = (left << 31) | (left >> 1)
+	right = (right << 1) | (right >> 31)
 
 	if decrypt {
 		for i := 0; i < 8; i++ {
@@ -20,6 +27,9 @@ func cryptBlock(subkeys []uint64, dst, src []byte, decrypt bool) {
 			left, right = feistel(left, right, subkeys[2*i], subkeys[2*i+1])
 		}
 	}
+
+	left = (left << 1) | (left >> 31)
+	right = (right << 31) | (right >> 1)
 
 	// switch left & right and perform final permutation
 	preOutput := (uint64(right) << 32) | uint64(left)
@@ -40,28 +50,34 @@ func decryptBlock(subkeys []uint64, dst, src []byte) {
 func feistel(l, r uint32, k0, k1 uint64) (lout, rout uint32) {
 	var t uint32
 
-	t = ((r << 29) | (r >> 3)) ^ uint32(k0)
+	//t = ((r << 29) | (r >> 3)) ^ uint32(k0)
+	//t = ((r << 1) | (r >> 31)) ^ uint32(k0)
+	t = ((r << 28) | (r >> 4)) ^ uint32(k0)
 
 	l ^= feistelBox[6][(t)&0x3f] ^
 		feistelBox[4][(t>>8)&0x3f] ^
 		feistelBox[2][(t>>16)&0x3f] ^
 		feistelBox[0][(t>>24)&0x3f]
 
-	t = ((r << 1) | (r >> 31)) ^ uint32(k0>>32)
+	//t = ((r << 1) | (r >> 31)) ^ uint32(k0>>32)
+	t = r ^ uint32(k0>>32)
 
 	l ^= feistelBox[7][t&0x3f] ^
 		feistelBox[5][(t>>8)&0x3f] ^
 		feistelBox[3][(t>>16)&0x3f] ^
 		feistelBox[1][(t>>24)&0x3f]
 
-	t = ((l << 29) | (l >> 3)) ^ uint32(k1)
+	//t = ((l << 29) | (l >> 3)) ^ uint32(k1)
+	//t = ((l << 1) | (l >> 31)) ^ uint32(k1)
+	t = ((l << 28) | (l >> 4)) ^ uint32(k1)
 
 	r ^= feistelBox[6][(t)&0x3f] ^
 		feistelBox[4][(t>>8)&0x3f] ^
 		feistelBox[2][(t>>16)&0x3f] ^
 		feistelBox[0][(t>>24)&0x3f]
 
-	t = ((l << 1) | (l >> 31)) ^ uint32(k1>>32)
+	//t = ((l << 1) | (l >> 31)) ^ uint32(k1>>32)
+	t = l ^ uint32(k1>>32)
 
 	r ^= feistelBox[7][t&0x3f] ^
 		feistelBox[5][(t>>8)&0x3f] ^
@@ -96,10 +112,18 @@ func init() {
 				row := uint8(((i & 2) << 4) | i&1)
 				col := uint8(j << 1)
 				t := row | col
+
+				// Mixing the rotation of the inner loops
+				f = (f << 1) | (f >> 31)
+
 				feistelBox[s][t] = uint32(f)
+				fmt.Fprintf(os.Stderr, "(%02d)%08x ", t, f)
 			}
+			fmt.Fprintln(os.Stderr)
 		}
+		fmt.Fprintln(os.Stderr)
 	}
+	fmt.Fprintln(os.Stderr)
 }
 
 // permuteInitialBlock is equivalent to the permutation defined
