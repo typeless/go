@@ -46,8 +46,6 @@ func decryptBlock(subkeys []uint64, dst, src []byte) {
 func feistel(l, r uint32, k0, k1 uint64) (lout, rout uint32) {
 	var t uint32
 
-	//t = ((r << 29) | (r >> 3)) ^ uint32(k0)
-	//t = ((r << 1) | (r >> 31)) ^ uint32(k0)
 	t = ((r << 28) | (r >> 4)) ^ uint32(k0)
 
 	l ^= feistelBox[6][(t)&0x3f] ^
@@ -55,7 +53,6 @@ func feistel(l, r uint32, k0, k1 uint64) (lout, rout uint32) {
 		feistelBox[2][(t>>16)&0x3f] ^
 		feistelBox[0][(t>>24)&0x3f]
 
-	//t = ((r << 1) | (r >> 31)) ^ uint32(k0>>32)
 	t = r ^ uint32(k0>>32)
 
 	l ^= feistelBox[7][t&0x3f] ^
@@ -63,8 +60,6 @@ func feistel(l, r uint32, k0, k1 uint64) (lout, rout uint32) {
 		feistelBox[3][(t>>16)&0x3f] ^
 		feistelBox[1][(t>>24)&0x3f]
 
-	//t = ((l << 29) | (l >> 3)) ^ uint32(k1)
-	//t = ((l << 1) | (l >> 31)) ^ uint32(k1)
 	t = ((l << 28) | (l >> 4)) ^ uint32(k1)
 
 	r ^= feistelBox[6][(t)&0x3f] ^
@@ -72,7 +67,6 @@ func feistel(l, r uint32, k0, k1 uint64) (lout, rout uint32) {
 		feistelBox[2][(t>>16)&0x3f] ^
 		feistelBox[0][(t>>24)&0x3f]
 
-	//t = ((l << 1) | (l >> 31)) ^ uint32(k1>>32)
 	t = l ^ uint32(k1>>32)
 
 	r ^= feistelBox[7][t&0x3f] ^
