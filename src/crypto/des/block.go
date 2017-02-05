@@ -4,11 +4,7 @@
 
 package des
 
-import (
-	"encoding/binary"
-	"fmt"
-	"os"
-)
+import "encoding/binary"
 
 func cryptBlock(subkeys []uint64, dst, src []byte, decrypt bool) {
 	b := binary.BigEndian.Uint64(src)
@@ -117,13 +113,9 @@ func init() {
 				f = (f << 1) | (f >> 31)
 
 				feistelBox[s][t] = uint32(f)
-				fmt.Fprintf(os.Stderr, "(%02d)%08x ", t, f)
 			}
-			fmt.Fprintln(os.Stderr)
 		}
-		fmt.Fprintln(os.Stderr)
 	}
-	fmt.Fprintln(os.Stderr)
 }
 
 // permuteInitialBlock is equivalent to the permutation defined
