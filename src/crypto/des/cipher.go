@@ -72,11 +72,9 @@ func (c *tripleDESCipher) Encrypt(dst, src []byte) {
 	for i := 0; i < 8; i++ {
 		left, right = feistel(left, right, c.cipher1.subkeys[2*i], c.cipher1.subkeys[2*i+1])
 	}
-
 	for i := 0; i < 8; i++ {
 		right, left = feistel(right, left, c.cipher2.subkeys[15-2*i], c.cipher2.subkeys[15-(2*i+1)])
 	}
-
 	for i := 0; i < 8; i++ {
 		left, right = feistel(left, right, c.cipher3.subkeys[2*i], c.cipher3.subkeys[2*i+1])
 	}
@@ -86,10 +84,6 @@ func (c *tripleDESCipher) Encrypt(dst, src []byte) {
 
 	preOutput := (uint64(right) << 32) | uint64(left)
 	binary.BigEndian.PutUint64(dst, permuteFinalBlock(preOutput))
-
-	//c.cipher1.Encrypt(dst, src)
-	//c.cipher2.Decrypt(dst, dst)
-	//c.cipher3.Encrypt(dst, dst)
 }
 
 func (c *tripleDESCipher) Decrypt(dst, src []byte) {
@@ -103,11 +97,9 @@ func (c *tripleDESCipher) Decrypt(dst, src []byte) {
 	for i := 0; i < 8; i++ {
 		left, right = feistel(left, right, c.cipher3.subkeys[15-2*i], c.cipher3.subkeys[15-(2*i+1)])
 	}
-
 	for i := 0; i < 8; i++ {
 		right, left = feistel(right, left, c.cipher2.subkeys[2*i], c.cipher2.subkeys[2*i+1])
 	}
-
 	for i := 0; i < 8; i++ {
 		left, right = feistel(left, right, c.cipher1.subkeys[15-2*i], c.cipher1.subkeys[15-(2*i+1)])
 	}
@@ -115,11 +107,6 @@ func (c *tripleDESCipher) Decrypt(dst, src []byte) {
 	left = (left << 31) | (left >> 1)
 	right = (right << 31) | (right >> 1)
 
-	// switch left & right and perform final permutation
 	preOutput := (uint64(right) << 32) | uint64(left)
 	binary.BigEndian.PutUint64(dst, permuteFinalBlock(preOutput))
-
-	//c.cipher3.Decrypt(dst, src)
-	//c.cipher2.Encrypt(dst, dst)
-	//c.cipher1.Decrypt(dst, dst)
 }
