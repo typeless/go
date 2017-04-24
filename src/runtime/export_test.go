@@ -8,6 +8,7 @@ package runtime
 
 import (
 	"runtime/internal/atomic"
+	"runtime/internal/hal"
 	"runtime/internal/sys"
 	"unsafe"
 )
@@ -161,7 +162,7 @@ var IfaceHash = ifaceHash
 
 func MemclrBytes(b []byte) {
 	s := (*slice)(unsafe.Pointer(&b))
-	memclrNoHeapPointers(s.array, uintptr(s.len))
+	hal.MemclrNoHeapPointers(s.array, uintptr(s.len))
 }
 
 var HashLoad = &hashLoad

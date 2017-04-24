@@ -55,6 +55,7 @@ package runtime
 
 import (
 	"runtime/internal/atomic"
+	"runtime/internal/hal"
 	"runtime/internal/sys"
 	"unsafe"
 )
@@ -1172,7 +1173,7 @@ func evacuate(t *maptype, h *hmap, oldbucket uintptr) {
 			if t.bucket.kind&kindNoPointers == 0 {
 				memclrHasPointers(add(unsafe.Pointer(b), dataOffset), uintptr(t.bucketsize)-dataOffset)
 			} else {
-				memclrNoHeapPointers(add(unsafe.Pointer(b), dataOffset), uintptr(t.bucketsize)-dataOffset)
+				hal.MemclrNoHeapPointers(add(unsafe.Pointer(b), dataOffset), uintptr(t.bucketsize)-dataOffset)
 			}
 		}
 	}

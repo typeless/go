@@ -72,6 +72,7 @@ package runtime
 
 import (
 	"runtime/internal/atomic"
+	"runtime/internal/hal"
 	"runtime/internal/sys"
 	"unsafe"
 )
@@ -733,7 +734,7 @@ func (h heapBits) initSpan(s *mspan) {
 		}
 		return
 	}
-	memclrNoHeapPointers(unsafe.Pointer(subtractb(h.bitp, nbyte-1)), nbyte)
+	hal.MemclrNoHeapPointers(unsafe.Pointer(subtractb(h.bitp, nbyte-1)), nbyte)
 }
 
 // initCheckmarkSpan initializes a span for being checkmarked.
@@ -1424,7 +1425,7 @@ func heapBitsSetTypeGCProg(h heapBits, progSize, elemSize, dataSize, allocSize u
 	}
 	endProg := unsafe.Pointer(subtractb(h.bitp, (totalBits+3)/4))
 	endAlloc := unsafe.Pointer(subtractb(h.bitp, allocSize/heapBitmapScale))
-	memclrNoHeapPointers(add(endAlloc, 1), uintptr(endProg)-uintptr(endAlloc))
+	hal.MemclrNoHeapPointers(add(endAlloc, 1), uintptr(endProg)-uintptr(endAlloc))
 }
 
 // progToPointerMask returns the 1-bit pointer mask output by the GC program prog.

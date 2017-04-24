@@ -81,6 +81,7 @@
 package runtime
 
 import (
+	"runtime/internal/hal"
 	"runtime/internal/sys"
 	"unsafe"
 )
@@ -686,7 +687,7 @@ func mallocgc(size uintptr, typ *_type, needzero bool) unsafe.Pointer {
 			}
 			x = unsafe.Pointer(v)
 			if needzero && span.needzero != 0 {
-				memclrNoHeapPointers(unsafe.Pointer(v), size)
+				hal.MemclrNoHeapPointers(unsafe.Pointer(v), size)
 			}
 		}
 	} else {

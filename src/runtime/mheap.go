@@ -10,6 +10,7 @@ package runtime
 
 import (
 	"runtime/internal/atomic"
+	"runtime/internal/hal"
 	"runtime/internal/sys"
 	"unsafe"
 )
@@ -681,7 +682,7 @@ func (h *mheap) alloc(npage uintptr, sizeclass int32, large bool, needzero bool)
 
 	if s != nil {
 		if needzero && s.needzero != 0 {
-			memclrNoHeapPointers(unsafe.Pointer(s.base()), s.npages<<_PageShift)
+			hal.MemclrNoHeapPointers(unsafe.Pointer(s.base()), s.npages<<_PageShift)
 		}
 		s.needzero = 0
 	}
@@ -1632,7 +1633,7 @@ func newArenaMayUnlock() *gcBitsArena {
 	} else {
 		result = gcBitsArenas.free
 		gcBitsArenas.free = gcBitsArenas.free.next
-		memclrNoHeapPointers(unsafe.Pointer(result), gcBitsChunkBytes)
+		hal.MemclrNoHeapPointers(unsafe.Pointer(result), gcBitsChunkBytes)
 	}
 	result.next = nil
 	// If result.bits is not 8 byte aligned adjust index so

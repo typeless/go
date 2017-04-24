@@ -5,6 +5,7 @@
 package runtime
 
 import (
+	"runtime/internal/hal"
 	"runtime/internal/sys"
 	"unsafe"
 )
@@ -60,24 +61,9 @@ func badsystemstack() {
 	throw("systemstack called from unexpected goroutine")
 }
 
-// memclrNoHeapPointers clears n bytes starting at ptr.
-//
-// Usually you should use typedmemclr. memclrNoHeapPointers should be
-// used only when the caller knows that *ptr contains no heap pointers
-// because either:
-//
-// 1. *ptr is initialized memory and its type is pointer-free.
-//
-// 2. *ptr is uninitialized memory (e.g., memory that's being reused
-//    for a new allocation) and hence contains only "junk".
-//
-// in memclr_*.s
-//go:noescape
-func memclrNoHeapPointers(ptr unsafe.Pointer, n uintptr)
-
 //go:linkname reflect_memclrNoHeapPointers reflect.memclrNoHeapPointers
 func reflect_memclrNoHeapPointers(ptr unsafe.Pointer, n uintptr) {
-	memclrNoHeapPointers(ptr, n)
+	hal.MemclrNoHeapPointers(ptr, n)
 }
 
 // memmove copies n bytes from "from" to "to".

@@ -4,7 +4,10 @@
 
 package runtime
 
-import "unsafe"
+import (
+	"runtime/internal/hal"
+	"unsafe"
+)
 
 const memDebug = false
 
@@ -48,7 +51,7 @@ func memAlloc(n uintptr) unsafe.Pointer {
 
 func memFree(ap unsafe.Pointer, n uintptr) {
 	n = memRound(n)
-	memclrNoHeapPointers(ap, n)
+	hal.MemclrNoHeapPointers(ap, n)
 	bp := (*memHdr)(ap)
 	bp.size = n
 	bpn := uintptr(ap)

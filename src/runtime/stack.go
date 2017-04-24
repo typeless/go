@@ -6,6 +6,7 @@ package runtime
 
 import (
 	"runtime/internal/atomic"
+	"runtime/internal/hal"
 	"runtime/internal/sys"
 	"unsafe"
 )
@@ -429,7 +430,7 @@ func stackfree(stk stack) {
 	}
 	if stackDebug >= 1 {
 		println("stackfree", v, n)
-		memclrNoHeapPointers(v, n) // for testing, clobber stack data
+		hal.MemclrNoHeapPointers(v, n) // for testing, clobber stack data
 	}
 	if debug.efence != 0 || stackFromSystem != 0 {
 		if debug.efence != 0 || stackFaultOnFree != 0 {

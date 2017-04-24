@@ -8,7 +8,10 @@
 
 package runtime
 
-import "unsafe"
+import (
+	"runtime/internal/hal"
+	"unsafe"
+)
 
 // FixAlloc is a simple free-list allocator for fixed size objects.
 // Malloc uses a FixAlloc wrapped around sysAlloc to manages its
@@ -72,7 +75,7 @@ func (f *fixalloc) alloc() unsafe.Pointer {
 		f.list = f.list.next
 		f.inuse += f.size
 		if f.zero {
-			memclrNoHeapPointers(v, f.size)
+			hal.MemclrNoHeapPointers(v, f.size)
 		}
 		return v
 	}

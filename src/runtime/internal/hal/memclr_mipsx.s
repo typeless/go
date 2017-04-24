@@ -14,8 +14,8 @@
 #define MOVWLO  MOVWL
 #endif
 
-// void runtime·memclrNoHeapPointers(void*, uintptr)
-TEXT runtime·memclrNoHeapPointers(SB),NOSPLIT,$0-8
+// void runtime·MemclrNoHeapPointers(void*, uintptr)
+TEXT runtime·MemclrNoHeapPointers(SB),NOSPLIT,$0-8
 	MOVW	n+4(FP), R2
 	MOVW	ptr+0(FP), R1
 

@@ -5,6 +5,7 @@
 package runtime
 
 import (
+	"runtime/internal/hal"
 	"unsafe"
 )
 
@@ -141,7 +142,7 @@ func growslice(et *_type, old slice, cap int) slice {
 		memmove(p, old.array, lenmem)
 		// The append() that calls growslice is going to overwrite from old.len to cap (which will be the new length).
 		// Only clear the part that will not be overwritten.
-		memclrNoHeapPointers(add(p, newlenmem), capmem-newlenmem)
+		hal.MemclrNoHeapPointers(add(p, newlenmem), capmem-newlenmem)
 	} else {
 		// Note: can't use rawmem (which avoids zeroing of memory), because then GC can scan uninitialized memory.
 		p = mallocgc(capmem, et, true)

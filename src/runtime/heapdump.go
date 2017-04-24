@@ -12,6 +12,7 @@
 package runtime
 
 import (
+	"runtime/internal/hal"
 	"runtime/internal/sys"
 	"unsafe"
 )
@@ -631,7 +632,7 @@ func mdump() {
 			s.ensureSwept()
 		}
 	}
-	memclrNoHeapPointers(unsafe.Pointer(&typecache), unsafe.Sizeof(typecache))
+	hal.MemclrNoHeapPointers(unsafe.Pointer(&typecache), unsafe.Sizeof(typecache))
 	dwrite(unsafe.Pointer(&dumphdr[0]), uintptr(len(dumphdr)))
 	dumpparams()
 	dumpitabs()

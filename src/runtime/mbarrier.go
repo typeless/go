@@ -14,6 +14,7 @@
 package runtime
 
 import (
+	"runtime/internal/hal"
 	"runtime/internal/sys"
 	"unsafe"
 )
@@ -409,7 +410,7 @@ func reflect_typedslicecopy(elemType *_type, dst, src slice) int {
 // typedmemclr clears the typed memory at ptr with type typ. The
 // memory at ptr must already be initialized (and hence in type-safe
 // state). If the memory is being initialized for the first time, see
-// memclrNoHeapPointers.
+// MemclrNoHeapPointers.
 //
 // If the caller knows that typ has pointers, it can alternatively
 // call memclrHasPointers.
@@ -419,7 +420,7 @@ func typedmemclr(typ *_type, ptr unsafe.Pointer) {
 	if typ.kind&kindNoPointers == 0 {
 		bulkBarrierPreWrite(uintptr(ptr), 0, typ.size)
 	}
-	memclrNoHeapPointers(ptr, typ.size)
+	hal.MemclrNoHeapPointers(ptr, typ.size)
 }
 
 // memclrHasPointers clears n bytes of typed memory starting at ptr.
@@ -430,5 +431,5 @@ func typedmemclr(typ *_type, ptr unsafe.Pointer) {
 //go:nosplit
 func memclrHasPointers(ptr unsafe.Pointer, n uintptr) {
 	bulkBarrierPreWrite(uintptr(ptr), 0, n)
-	memclrNoHeapPointers(ptr, n)
+	hal.MemclrNoHeapPointers(ptr, n)
 }
