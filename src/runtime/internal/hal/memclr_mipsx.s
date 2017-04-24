@@ -15,7 +15,7 @@
 #endif
 
 // void runtime·MemclrNoHeapPointers(void*, uintptr)
-TEXT runtime·MemclrNoHeapPointers(SB),NOSPLIT,$0-8
+TEXT runtime∕internal∕hal·MemclrNoHeapPointers(SB),NOSPLIT,$0-8
 	MOVW	n+4(FP), R2
 	MOVW	ptr+0(FP), R1
 
