@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -234,15 +235,11 @@ func (ctxt *Link) pclntab() {
 	ftab.SetUint(ctxt.Arch, 8, uint64(nfunc))
 	pclntabPclntabOffset = int32(8 + ctxt.Arch.PtrSize)
 
-	funcnameoff := make(map[string]int32)
-	nameToOffset := func(name string) int32 {
-		nameoff, ok := funcnameoff[name]
-		if !ok {
-			nameoff = ftabaddstring(ctxt, ftab, name)
-			funcnameoff[name] = nameoff
-		}
-		return nameoff
-	}
+	nameIdx := make(map[string][]int32)
+	pcspIdx := make(map[int32]*sym.Pcdata)
+	pcfileIdx := make(map[int32]*sym.Pcdata)
+	pclineIdx := make(map[int32]*sym.Pcdata)
+	pcdataIdx := make(map[int32]*sym.Pcdata)
 
 	nfunc = 0
 	var last *sym.Symbol
@@ -301,8 +298,8 @@ func (ctxt *Link) pclntab() {
 		off = int32(ftab.SetAddr(ctxt.Arch, int64(off), s))
 
 		// name int32
-		nameoff := nameToOffset(s.Name)
-		off = int32(ftab.SetUint32(ctxt.Arch, int64(off), uint32(nameoff)))
+		nameIdx[s.Name] = append(nameIdx[s.Name], off)
+		off = int32(ftab.SetUint32(ctxt.Arch, int64(off), 0))
 
 		// args int32
 		// TODO: Move into funcinfo.
@@ -371,19 +368,18 @@ func (ctxt *Link) pclntab() {
 			inlTreeSym.Type = sym.SRODATA
 			inlTreeSym.Attr |= sym.AttrReachable | sym.AttrDuplicateOK
 
-			for i, call := range pcln.InlTree {
+			for _, call := range pcln.InlTree {
 				// Usually, call.File is already numbered since the file
 				// shows up in the Pcfile table. However, two inlined calls
 				// might overlap exactly so that only the innermost file
 				// appears in the Pcfile table. In that case, this assigns
 				// the outer file a number.
 				numberfile(ctxt, call.File)
-				nameoff := nameToOffset(call.Func.Name)
 
-				inlTreeSym.SetUint32(ctxt.Arch, int64(i*16+0), uint32(call.Parent))
-				inlTreeSym.SetUint32(ctxt.Arch, int64(i*16+4), uint32(call.File.Value))
-				inlTreeSym.SetUint32(ctxt.Arch, int64(i*16+8), uint32(call.Line))
-				inlTreeSym.SetUint32(ctxt.Arch, int64(i*16+12), uint32(nameoff))
+				// The string is referenced to by other symbol, so we assign -1 to it to indicate that it's not an offset of the pcln symbol.
+				if _, ok := nameIdx[s.Name]; !ok {
+					nameIdx[s.Name] = append(nameIdx[s.Name], -1)
+				}
 			}
 
 			pcln.Funcdata[objabi.FUNCDATA_InlTree] = inlTreeSym
@@ -391,14 +387,21 @@ func (ctxt *Link) pclntab() {
 		}
 
 		// pcdata
-		off = addpctab(ctxt, ftab, off, &pcln.Pcsp)
+		pcspIdx[off] = &pcln.Pcsp
+		off = int32(ftab.SetUint32(ctxt.Arch, int64(off), 0))
 
-		off = addpctab(ctxt, ftab, off, &pcln.Pcfile)
-		off = addpctab(ctxt, ftab, off, &pcln.Pcline)
+		pcfileIdx[off] = &pcln.Pcfile
+		off = int32(ftab.SetUint32(ctxt.Arch, int64(off), 0))
+
+		pclineIdx[off] = &pcln.Pcline
+		off = int32(ftab.SetUint32(ctxt.Arch, int64(off), 0))
+
 		off = int32(ftab.SetUint32(ctxt.Arch, int64(off), uint32(len(pcln.Pcdata))))
 		off = int32(ftab.SetUint32(ctxt.Arch, int64(off), uint32(len(pcln.Funcdata))))
+
 		for i := range pcln.Pcdata {
-			off = addpctab(ctxt, ftab, off, &pcln.Pcdata[i])
+			pcdataIdx[off] = &pcln.Pcdata[i]
+			off = int32(ftab.SetUint32(ctxt.Arch, int64(off), 0))
 		}
 
 		// funcdata, must be pointer-aligned and we're only int32-aligned.
@@ -433,6 +436,37 @@ func (ctxt *Link) pclntab() {
 	// Final entry of table is just end pc.
 	ftab.SetAddrPlus(ctxt.Arch, 8+int64(ctxt.Arch.PtrSize)+int64(nfunc)*2*int64(ctxt.Arch.PtrSize), last, last.Size)
 
+	// Pcdata chunks
+	addRelocatePackedPcdata(ctxt, ftab, pcspIdx)
+	addRelocatePackedPcdata(ctxt, ftab, pcfileIdx)
+	addRelocatePackedPcdata(ctxt, ftab, pclineIdx)
+	addRelocatePackedPcdata(ctxt, ftab, pcdataIdx)
+
+	strLoc := addStringPool(ctxt, ftab, nameIdx)
+	relocateStrings(ctxt, ftab, nameIdx, strLoc)
+
+	ftab.Size = int64(len(ftab.P))
+
+	// Process the inline tree symbols given the string pool is availabe.
+	for _, s := range ctxt.Textp {
+		if !emitPcln(ctxt, s) {
+			continue
+		}
+		pcln := s.FuncInfo
+		if pcln == nil {
+			pcln = &pclntabZpcln
+		}
+		if len(pcln.InlTree) > 0 {
+			inlTreeSym := ctxt.Syms.Lookup("inltree."+s.Name, 0)
+			for i, call := range pcln.InlTree {
+				inlTreeSym.SetUint32(ctxt.Arch, int64(i*16+0), uint32(call.Parent))
+				inlTreeSym.SetUint32(ctxt.Arch, int64(i*16+4), uint32(call.File.Value))
+				inlTreeSym.SetUint32(ctxt.Arch, int64(i*16+8), uint32(call.Line))
+				inlTreeSym.SetUint32(ctxt.Arch, int64(i*16+12), uint32(strLoc[s.Name]))
+			}
+		}
+	}
+
 	// Start file table.
 	start := int32(len(ftab.P))
 
@@ -444,13 +478,59 @@ func (ctxt *Link) pclntab() {
 	ftab.SetUint32(ctxt.Arch, int64(start), uint32(len(ctxt.Filesyms)+1))
 	for i := len(ctxt.Filesyms) - 1; i >= 0; i-- {
 		s := ctxt.Filesyms[i]
-		ftab.SetUint32(ctxt.Arch, int64(start)+s.Value*4, uint32(ftabaddstring(ctxt, ftab, s.Name)))
+		nameIdx[s.Name] = append(nameIdx[s.Name], start+int32(s.Value)*4)
+		ftab.SetUint32(ctxt.Arch, int64(start)+s.Value*4, 0)
 	}
 
 	ftab.Size = int64(len(ftab.P))
 
 	if ctxt.Debugvlog != 0 {
 		ctxt.Logf("%5.2f pclntab=%d bytes, funcdata total %d bytes\n", Cputime(), ftab.Size, funcdataBytes)
+	}
+}
+
+func addStringPool(ctxt *Link, s *sym.Symbol, nameIdx map[string][]int32) map[string]int32 {
+	var strList []string
+	for k, _ := range nameIdx {
+		strList = append(strList, k)
+	}
+	sort.Strings(strList)
+
+	// Populate the string pool appended at the end of ftab, and making a index strLoc for it.
+	var strLoc map[string]int32 = make(map[string]int32)
+	for _, v := range strList {
+		strLoc[v] = ftabaddstring(ctxt, s, v)
+	}
+	return strLoc
+}
+
+func relocateStrings(ctxt *Link, s *sym.Symbol, nameIdx map[string][]int32, strLoc map[string]int32) {
+	// Update the offset fields recorded in the string list of nameIdx.
+	for str, locs := range nameIdx {
+		for _, loc := range locs {
+			v := strLoc[str]
+			// -1 indicates that it's not an offset within the pcln table.
+			if v != -1 {
+				s.SetUint32(ctxt.Arch, int64(loc), uint32(v))
+			}
+		}
+	}
+}
+
+func addRelocatePackedPcdata(ctxt *Link, s *sym.Symbol, idx map[int32]*sym.Pcdata) {
+	var sorted []int
+	for k, _ := range idx {
+		sorted = append(sorted, int(k))
+	}
+	sort.Ints(sorted)
+
+	for _, off := range sorted {
+		pcdata := idx[int32(off)]
+		if len(pcdata.P) > 0 {
+			cur := len(s.P)
+			s.AddBytes(pcdata.P)
+			s.SetUint32(ctxt.Arch, int64(off), uint32(cur))
+		}
 	}
 }
 
