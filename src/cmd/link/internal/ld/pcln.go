@@ -239,7 +239,12 @@ func (ctxt *Link) pclntab() {
 	pcspIdx := make(map[int32]*sym.Pcdata)
 	pcfileIdx := make(map[int32]*sym.Pcdata)
 	pclineIdx := make(map[int32]*sym.Pcdata)
-	pcdataIdx := make(map[int32]*sym.Pcdata)
+
+	const pcdataIdxTotal = 3
+	pcdataIdxList := [pcdataIdxTotal]map[int32]*sym.Pcdata{}
+	for i := 0; i < len(pcdataIdxList); i++ {
+		pcdataIdxList[i] = make(map[int32]*sym.Pcdata)
+	}
 
 	nfunc = 0
 	var last *sym.Symbol
@@ -400,7 +405,7 @@ func (ctxt *Link) pclntab() {
 		off = int32(ftab.SetUint32(ctxt.Arch, int64(off), uint32(len(pcln.Funcdata))))
 
 		for i := range pcln.Pcdata {
-			pcdataIdx[off] = &pcln.Pcdata[i]
+			pcdataIdxList[i][off] = &pcln.Pcdata[i]
 			off = int32(ftab.SetUint32(ctxt.Arch, int64(off), 0))
 		}
 
@@ -440,7 +445,10 @@ func (ctxt *Link) pclntab() {
 	addRelocatePackedPcdata(ctxt, ftab, pcspIdx)
 	addRelocatePackedPcdata(ctxt, ftab, pcfileIdx)
 	addRelocatePackedPcdata(ctxt, ftab, pclineIdx)
-	addRelocatePackedPcdata(ctxt, ftab, pcdataIdx)
+
+	for i := 0; i < pcdataIdxTotal; i++ {
+		addRelocatePackedPcdata(ctxt, ftab, pcdataIdxList[i])
+	}
 
 	strLoc := addStringPool(ctxt, ftab, nameIdx)
 	relocateStrings(ctxt, ftab, nameIdx, strLoc)
