@@ -246,6 +246,7 @@ func (ctxt *Link) pclntab() {
 		pcdataIdxList[i] = make(map[int32]*sym.Pcdata)
 	}
 
+	func0start := len(ftab.P)
 	nfunc = 0
 	var last *sym.Symbol
 	for _, s := range ctxt.Textp {
@@ -436,19 +437,31 @@ func (ctxt *Link) pclntab() {
 
 		nfunc++
 	}
+	println("nfunc:", nfunc, "ftab.size:", len(ftab.P), "avg:", len(ftab.P)/int(nfunc), "func*N:", len(ftab.P)-func0start, "avg:", (len(ftab.P)-func0start)/int(nfunc))
 
 	pclntabLastFunc = last
 	// Final entry of table is just end pc.
 	ftab.SetAddrPlus(ctxt.Arch, 8+int64(ctxt.Arch.PtrSize)+int64(nfunc)*2*int64(ctxt.Arch.PtrSize), last, last.Size)
 
 	// Pcdata chunks
-	addRelocatePackedPcdata(ctxt, ftab, pcspIdx)
-	addRelocatePackedPcdata(ctxt, ftab, pcfileIdx)
-	addRelocatePackedPcdata(ctxt, ftab, pclineIdx)
+	size := 0
+	total := 0
+	size = addRelocatePackedPcdata(ctxt, ftab, pcspIdx)
+	total += size
+	println("pcsc:", size)
+	size = addRelocatePackedPcdata(ctxt, ftab, pcfileIdx)
+	total += size
+	println("pcfile:", size)
+	size = addRelocatePackedPcdata(ctxt, ftab, pclineIdx)
+	total += size
+	println("pcline:", size)
 
 	for i := 0; i < pcdataIdxTotal; i++ {
-		addRelocatePackedPcdata(ctxt, ftab, pcdataIdxList[i])
+		size = addRelocatePackedPcdata(ctxt, ftab, pcdataIdxList[i])
+		total += size
+		println("pcdata ", i, ":", size)
 	}
+	println("total:", total)
 
 	strLoc := addStringPool(ctxt, ftab, nameIdx)
 	relocateStrings(ctxt, ftab, nameIdx, strLoc)
@@ -525,21 +538,24 @@ func relocateStrings(ctxt *Link, s *sym.Symbol, nameIdx map[string][]int32, strL
 	}
 }
 
-func addRelocatePackedPcdata(ctxt *Link, s *sym.Symbol, idx map[int32]*sym.Pcdata) {
+func addRelocatePackedPcdata(ctxt *Link, s *sym.Symbol, idx map[int32]*sym.Pcdata) int {
 	var sorted []int
 	for k, _ := range idx {
 		sorted = append(sorted, int(k))
 	}
 	sort.Ints(sorted)
 
+	total := 0
 	for _, off := range sorted {
 		pcdata := idx[int32(off)]
 		if len(pcdata.P) > 0 {
 			cur := len(s.P)
 			s.AddBytes(pcdata.P)
+			total += len(pcdata.P)
 			s.SetUint32(ctxt.Arch, int64(off), uint32(cur))
 		}
 	}
+	return total
 }
 
 func gorootFinal() string {
