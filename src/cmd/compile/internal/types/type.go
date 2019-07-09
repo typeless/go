@@ -41,6 +41,8 @@ const (
 	TFLOAT32
 	TFLOAT64
 
+	TDECIMAL128
+
 	TBOOL
 
 	TPTR
@@ -118,6 +120,7 @@ var (
 	Idealrune    = New(TIDEAL)
 	Idealfloat   = New(TIDEAL)
 	Idealcomplex = New(TIDEAL)
+	Idealdecimal = New(TIDEAL)
 )
 
 // A Type represents a Go type.
@@ -1062,7 +1065,7 @@ func (t *Type) cmp(x *Type) Cmp {
 	// both syms nil, look at structure below.
 
 	switch t.Etype {
-	case TBOOL, TFLOAT32, TFLOAT64, TCOMPLEX64, TCOMPLEX128, TUNSAFEPTR, TUINTPTR,
+	case TBOOL, TFLOAT32, TFLOAT64, TCOMPLEX64, TCOMPLEX128, TDECIMAL128, TUNSAFEPTR, TUINTPTR,
 		TINT8, TINT16, TINT32, TINT64, TINT, TUINT8, TUINT16, TUINT32, TUINT64, TUINT:
 		return CMPeq
 
@@ -1253,6 +1256,10 @@ func (t *Type) IsFloat() bool {
 
 func (t *Type) IsComplex() bool {
 	return t.Etype == TCOMPLEX64 || t.Etype == TCOMPLEX128
+}
+
+func (t *Type) IsDecimal() bool {
+	return t.Etype == TDECIMAL128
 }
 
 // IsPtr reports whether t is a regular Go pointer type.
@@ -1456,7 +1463,7 @@ func Haspointers(t *Type) bool {
 func Haspointers1(t *Type, ignoreNotInHeap bool) bool {
 	switch t.Etype {
 	case TINT, TUINT, TINT8, TUINT8, TINT16, TUINT16, TINT32, TUINT32, TINT64,
-		TUINT64, TUINTPTR, TFLOAT32, TFLOAT64, TCOMPLEX64, TCOMPLEX128, TBOOL, TSSA:
+		TUINT64, TUINTPTR, TFLOAT32, TFLOAT64, TCOMPLEX64, TCOMPLEX128, TDECIMAL128, TBOOL, TSSA:
 		return false
 
 	case TARRAY:
